@@ -1,0 +1,32 @@
+LOAD BIG JSON FILE
+
+
+CALL apoc.periodic.iterate
+("CALL apoc.load.json('file://tweets.json')
+YIELD value","
+WITH value AS tweet
+WHERE tweet.in_reply_to_screen_name is not null
+AND tweet.in_reply_to_user_id is not null
+MERGE (u1:User {screen_name:tweet.user.screen_name})
+MERGE (u2:User {screen_name:tweet.in_reply_to_screen_name})
+MERGE (u1)-[interaction:REPLIED_TO]->(u2)
+ON CREATE SET interaction.weight = 1
+ON MATCH SET interaction.weight =interaction.weight+1",
+{bathSize:1000,iterateList:true}
+);
+
+
+CREATE REPLIES RELATIONSHIPS
+
+MATCH ()-[interaction:REPLIED_TO]->(u:User)
+WITH u, count(interaction) AS connectionCount
+RETURN connectionCount, count(u) AS userCount
+ORDER BY connectionCount
+
+
+TOP 
+
+MATCH (u:User)-[interaction:REPLIED_TO]->()
+WITH u, count(interaction) AS connectionCount
+RETURN connectionCount, count(u) AS userCount
+ORDER BY connectionCount
